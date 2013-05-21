@@ -3,17 +3,17 @@ module ColumnAliases
     def self.included(base)
       base.alias_method_chain :table, :column_aliases
     end
-    
+
     def table_with_column_aliases
       ::ColumnAliases.extend_arel_table table_without_column_aliases, active_record.column_aliases
     end
   end
-  
+
   module JoinHelperExtensions
     def self.included(base)
       base.alias_method_chain :construct_tables, :column_aliases
     end
-    
+
     def construct_tables_with_column_aliases
       offset = 0
       tables = construct_tables_without_column_aliases
