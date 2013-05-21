@@ -1,141 +1,112 @@
 require 'spec_helper'
 
-describe ColumnAliases::Core do
+shared_examples_for 'a list of column names' do
+  it 'has unchanged contents' do
+    should_not be_include('first_name')
+    should_not be_include('last_name')
+    should be_include('fname')
+    should be_include('lname')
+  end
+end
+
+shared_examples_for 'a person named' do |fname,lname|
+  its(:fname) { should == fname }
+  its(:lname) { should == lname }
+  its(:first_name) { should == fname }
+  its(:last_name) { should == lname }
+end
+
+shared_examples_for 'a readable attribute' do |aliased,unaliased,value|
+  its([aliased.to_s]) { should == value }
+  its([unaliased.to_s]) { should == value }
+  its([aliased.to_sym]) { should == value }
+  its([unaliased.to_sym]) { should == value }
+end
+
+shared_examples_for 'a writable attribute' do |aliased,unaliased,value|
+  after(:each) do
+    subject[aliased].should == value
+    subject[unaliased].should == value
+  end
+
+  it('can be written by aliased name') { writer.call aliased.to_s, value }
+  it('can be written by unaliased name') { writer.call unaliased.to_s, value }
+  it('can be written by aliased symbol') { writer.call aliased.to_sym, value }
+  it('can be written by unaliased symbol') { writer.call unaliased.to_sym, value }
+end
+
+describe ColumnAliases::Core::ClassMethods do
+
   describe "::column_names" do
     subject { Person.column_names }
-
-    it { should_not be_include('first_name') }
-    it { should_not be_include('last_name') }
-    it { should be_include('fname') }
-    it { should be_include('lname') }
+    it_behaves_like 'a list of column names'
   end
-  
+
   describe "::columns_hash" do
     subject { Person.columns_hash }
 
-    it { should_not be_include('first_name') }
-    it { should_not be_include('last_name') }
-    it { should be_include('fname') }
-    it { should be_include('lname') }
+    describe '#keys' do
+      subject { Person.columns_hash.keys }
+      it_behaves_like 'a list of column names'
+    end
 
-    describe "fetches columns by alias" do      
-	    it { subject['first_name'].should == subject['fname'] }
-	    it { subject['last_name'].should == subject['lname'] }
+    it "can be indexed by alias" do
+      subject['first_name'].should == subject['fname']
+      subject['last_name'].should == subject['lname']
     end
   end
-  
-  shared_examples_for 'model initialization' do
-    its(:fname) { should == 'John' }
-    its(:lname) { should == 'Doe' }
-    its(:first_name) { should == 'John' }
-    its(:last_name) { should == 'Doe' }
-  end
-  
+end
+
+describe ColumnAliases::Core do
+  subject { FactoryGirl.build(:person) }
+
   describe '#initialize with aliased names' do
     subject { Person.new(:first_name=>'John',:last_name=>'Doe') }
-    it_should_behave_like 'model initialization'
+    it_behaves_like 'a person named', 'John', 'Doe'
   end
-  
-  describe '#initialize without aliased names' do
+
+  describe '#initialize with unaliased names' do
     subject { Person.new(:fname=>'John',:lname=>'Doe') }
-    it_should_behave_like 'model initialization'
+    it_behaves_like 'a person named', 'John', 'Doe'
   end
-  
-  describe 'attribute reading' do
-    subject { FactoryGirl.build(:person) }
-      
-    its(:first_name) { should == 'John' }
-    its(:fname) { should == 'John' }
-    its(:last_name) { should == 'Doe' }
-    its(:lname) { should == 'Doe' }
-	      
-	  describe '#read_attribute' do
-	    it { subject.read_attribute(:first_name).should == 'John' }
-	    it { subject.read_attribute('first_name').should == 'John' }
-	    it { subject.read_attribute(:fname).should == 'John' }
-	    it { subject.read_attribute('fname').should == 'John' }
-	    it { subject.read_attribute(:last_name).should == 'Doe' }
-	    it { subject.read_attribute('last_name').should == 'Doe' }
-	    it { subject.read_attribute(:lname).should == 'Doe' }
-	    it { subject.read_attribute('lname').should == 'Doe' }
-	  end
-	  
-	  describe '#[]' do
-	    it { subject[:first_name].should == 'John' }
-	    it { subject['first_name'].should == 'John' }
-	    it { subject[:fname].should == 'John' }
-	    it { subject['fname'].should == 'John' }
-	    it { subject[:last_name].should == 'Doe' }
-	    it { subject['last_name'].should == 'Doe' }
-	    it { subject[:lname].should == 'Doe' }
-	    it { subject['lname'].should == 'Doe' }
-	  end
+
+  describe '#attributes= with aliased names' do
+    before(:each) { subject.attributes = {:first_name=>'John',:last_name=>'Doe'} }
+    it_behaves_like 'a person named', 'John', 'Doe'
   end
-  
-  describe 'attribute writing' do
-    subject { FactoryGirl.build(:person) }
-      
-    after(:each) do
-      subject.first_name.should == 'Johnny'
-	    subject.fname.should == 'Johnny'
-	    subject.last_name.should == 'Doey'
-	    subject.lname.should == 'Doey'
-    end
-    
-    describe 'with aliased names' do
-      it 'works with attribute methods' do
-        subject.first_name = 'Johnny'
-        subject.last_name = 'Doey'
-      end
-      
-      it 'works with #write_attribute(:name)' do
-        subject.instance_eval{ write_attribute(:first_name, 'Johnny') }
-        subject.instance_eval{ write_attribute(:last_name, 'Doey') }
-      end
-      
-      it "works with #write_attribute('name')" do
-        subject.instance_eval{ write_attribute('first_name', 'Johnny') }
-        subject.instance_eval{ write_attribute('last_name', 'Doey') }
-      end
-      
-      it 'works with #[:name]=' do
-        subject[:first_name] = 'Johnny'
-        subject[:last_name] = 'Doey'
-      end
-      
-      it "works with #['name']=" do
-        subject['first_name'] = 'Johnny'
-        subject['last_name'] = 'Doey'
-      end
-    end
-	      
-    describe 'with unaliased names' do
-      it 'works with attribute methods' do
-        subject.fname = 'Johnny'
-        subject.lname = 'Doey'
-      end
-      
-      it 'works with #write_attribute(:name)' do
-        subject.instance_eval{ write_attribute(:fname, 'Johnny') }
-        subject.instance_eval{ write_attribute(:lname, 'Doey') }
-      end
-      
-      it "works with #write_attribute('name')" do
-        subject.instance_eval{ write_attribute('fname', 'Johnny') }
-        subject.instance_eval{ write_attribute('lname', 'Doey') }
-      end
-      
-      it 'works with #[:name]=' do
-        subject[:fname] = 'Johnny'
-        subject[:lname] = 'Doey'
-      end
-      
-      it "works with #['name']=" do
-        subject['fname'] = 'Johnny'
-        subject['lname'] = 'Doey'
-      end
-    end
-	      
+
+  describe '#attributes= with unaliased names' do
+    before(:each) { subject.attributes = {:fname=>'John',:lname=>'Doe'} }
+    it_behaves_like 'a person named', 'John', 'Doe'
   end
-  
+
+  describe '#read_attribute' do
+    subject { proc{|k| FactoryGirl.build(:person).read_attribute(k) } }
+    it_behaves_like 'a readable attribute', :first_name, :fname, 'John'
+    it_behaves_like 'a readable attribute', :last_name, :lname, 'Doe'
+  end
+
+  describe '#[]' do
+    it_behaves_like 'a readable attribute', :first_name, :fname, 'John'
+    it_behaves_like 'a readable attribute', :last_name, :lname, 'Doe'
+  end
+
+  describe '#{attr_name}=' do
+    let(:writer) { proc{|k,v| subject.send(:"#{k}=", v) } }
+    it_behaves_like 'a writable attribute', :first_name, :fname, 'Jane'
+    it_behaves_like 'a writable attribute', :last_name, :lname, 'Smith'
+  end
+
+  describe '#write_attribute()' do
+    let(:writer) { proc{|k,v| subject.instance_eval{ write_attribute(k, v) } } }
+    it_behaves_like 'a writable attribute', :first_name, :fname, 'Jane'
+    it_behaves_like 'a writable attribute', :last_name, :lname, 'Smith'
+  end
+
+  describe '#[]=' do
+    let(:writer) { proc{|k,v| subject[k] = v } }
+    it_behaves_like 'a writable attribute', :first_name, :fname, 'Jane'
+    it_behaves_like 'a writable attribute', :last_name, :lname, 'Smith'
+  end
+
 end
