@@ -11,7 +11,7 @@ module ColumnAliases
       super(@column_aliases[name] || name)
     end
   end
-  
+
   def self.extend_arel_table(table, column_aliases)
     unless column_aliases.empty?
       table.extend ArelTableExtensions
@@ -20,14 +20,14 @@ module ColumnAliases
     table
   end
 
-	# Installs this extension into ActiveRecord.
-	def self.initialize!
-	  ::ActiveRecord::Base.send :include, Core
-	  ::ActiveRecord::Relation.send :include, RelationExtensions
-	  ::ActiveRecord::PredicateBuilder.send :extend, PredicateBuilderExtensions
-	  ::ActiveRecord::Associations::JoinDependency::JoinBase.send :include, JoinBaseExtensions
-	  ::ActiveRecord::Associations::JoinHelper.send :include, JoinHelperExtensions
-	end
+  # Installs this extension into ActiveRecord.
+  def self.initialize!
+    ::ActiveRecord::Base.send :include, Core
+    ::ActiveRecord::Relation.send :include, RelationExtensions
+    ::ActiveRecord::PredicateBuilder.send :extend, PredicateBuilderExtensions
+    ::ActiveRecord::Associations::JoinDependency::JoinBase.send :include, JoinBaseExtensions
+    ::ActiveRecord::Associations::JoinHelper.send :include, JoinHelperExtensions
+  end
 end
 
 ActiveSupport.on_load(:active_record) do
