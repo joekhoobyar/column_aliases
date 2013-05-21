@@ -9,6 +9,7 @@ gemspec
 group :development, :test do
 	gem "jquery-rails"
 	gem "rspec-rails"
+	gem "factory_girl_rails"
 end
 
 # Declare any dependencies that are still in development here instead of in
